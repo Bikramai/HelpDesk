@@ -3,18 +3,18 @@
 ## Frontend
 - **React 19 + TypeScript** (Vite) — SPA, type-safe component development
 - **Tailwind CSS** — utility-first styling
-- **React Router v7** — client-side routing
+- **React Router** — client-side routing
 
 ## Backend
-- **Node.js + Express + TypeScript** — REST API server
-- Database sessions for authentication
+- **Node.js with Express and TypeScript** - keeps the entire stack in one language, simple to setup up REST APIs
+- **Database sessions ** for authentication
 
 
 ## Database
 - **PostgreSQL** — relational data model for tickets, users, and categories. Fits naturally into tables with foreign keys. Good for filtering/sorting queries.
 
 ## ORM
-- **Prisma** — type-safe database access and migrations
+- **Prisma** — type-safe database migrations, works great with TypeScript
 
 
 ## AI
