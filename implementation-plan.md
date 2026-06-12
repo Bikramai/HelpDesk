@@ -2,15 +2,10 @@
 
 ## Phase 1: Project Scaffold & Database
 
-**Goal:** Working repo with database schema and dev environment ready.
-
-- [ ] Initialize backend: `express` + `typescript` + `ts-node-dev`
-- [ ] Initialize frontend: Vite + React 19 + TypeScript + Tailwind CSS + React Router
-- [ ] Add `prisma` and connect to local PostgreSQL
-- [ ] Write Prisma schema: `User`, `Ticket`, `Category`, `Message`
-- [ ] Run first migration and verify tables
-- [ ] Seed DB: one admin user, three categories (General, Technical, Refund)
-- [ ] Add `.env` with `DATABASE_URL`, `SESSION_SECRET`, `PORT`
+- [ ] Initialize monorepo structure (`/client`, `/server`)
+- [ ] Set up Express server with TypeScript
+- [ ] Setup up React app with TypeScript
+- [ ] Setup up PostgreSQL database
 
 ---
 
