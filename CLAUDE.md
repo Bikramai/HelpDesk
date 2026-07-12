@@ -14,7 +14,7 @@ AI-powered ticket management system. Support emails arrive via webhook, get auto
 | Styling | Tailwind CSS v4 |
 | Routing | React Router v7 |
 | Database | PostgreSQL + Prisma ORM |
-| Auth | express-session + connect-pg-simple |
+| Auth | Better Auth (email/password, database sessions via Prisma) |
 | AI | Anthropic Claude API |
 | Email | SendGrid or Mailgun (inbound webhook + outbound replies) |
 | Deployment | Docker + cloud provider |
