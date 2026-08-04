@@ -1,30 +1,41 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { authClient } from '../lib/auth-client'
+
+const loginSchema = z.object({
+  email: z.email('Enter a valid email address'),
+  password: z.string().min(1, 'Password is required'),
+})
+
+type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const { data: session, isPending } = authClient.useSession()
   const navigate = useNavigate()
+  const [serverError, setServerError] = useState<string | null>(null)
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+  })
 
   if (!isPending && session) {
     return <Navigate to="/" replace />
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
+  async function onSubmit(values: LoginFormValues) {
+    setServerError(null)
 
-    const { error } = await authClient.signIn.email({ email, password })
+    const { error } = await authClient.signIn.email(values)
 
     if (error) {
-      setError(error.message ?? 'Invalid email or password')
-      setIsSubmitting(false)
+      setServerError(error.message ?? 'Invalid email or password')
       return
     }
 
@@ -36,7 +47,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm bg-white rounded-lg shadow p-8 space-y-6">
         <h1 className="text-2xl font-bold text-gray-900 text-center">Sign in to HelpDesk</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email
@@ -44,12 +55,15 @@ export default function LoginPage() {
             <input
               id="email"
               type="email"
-              required
               autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              {...register('email')}
+              className={`w-full rounded-md border px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 ${
+                errors.email
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-gray-900'
+              }`}
             />
+            {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
           </div>
 
           <div>
@@ -59,15 +73,20 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
-              required
               autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              {...register('password')}
+              className={`w-full rounded-md border px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 ${
+                errors.password
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-gray-900'
+              }`}
             />
+            {errors.password && (
+              <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
+            )}
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {serverError && <p className="text-sm text-red-500">{serverError}</p>}
 
           <button
             type="submit"
