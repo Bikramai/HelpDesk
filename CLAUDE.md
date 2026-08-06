@@ -54,12 +54,23 @@ Server hot-reloads via `bun --watch`. Vite handles client HMR. The Vite proxy fo
 - **Message** — belongs to Ticket, has author (agent or null for inbound), body, timestamp
 - **Category** — seeded: General Questions, Technical Questions, Refund Requests
 
+## Authentication
+
+Better Auth (`server/src/lib/auth.ts`), email/password only, `disableSignUp: true` — accounts are created via the seed script (`server/prisma/seed.ts`), not self-registration. Sessions are stored in Postgres through `prismaAdapter`, not JWTs.
+
+- **Server mount** — `app.all('/api/auth/{*any}', toNodeHandler(auth))` in `server/src/index.ts` handles all Better Auth routes (sign-in, sign-out, session, etc.) under `/api/auth/*`.
+- **Protecting API routes** — `server/src/middleware/requireAuth.ts` calls `auth.api.getSession()`, 401s if absent, and sets `res.locals.user` / `res.locals.session` for downstream handlers.
+- **Role field** — `user.role` is a Better Auth `additionalFields` entry (`admin | agent`), defaults to `agent`, not settable via client input (`input: false`).
+- **Client** — `client/src/lib/auth-client.ts` creates the Better Auth React client (`createAuthClient`) pointed at `window.location.origin`; use `authClient.useSession()` for session state and `authClient.signIn.email()` / `.signOut()` for actions.
+- **Protected routes** — `client/src/components/ProtectedRoute.tsx` reads `useSession()`, redirects to `/login` when there's no session, otherwise renders `Layout` with `user={session.user}`.
+- **Env vars** (`server/.env.example`) — `BETTER_AUTH_SECRET` (min 32 chars), `BETTER_AUTH_URL`, `TRUSTED_ORIGIN` (must match the Vite dev origin, `http://localhost:5173`), plus `ADMIN_EMAIL` / `ADMIN_PASSWORD` consumed by the seed script.
+
 ## Implementation Phases
 
 See `implementation-plan.md` for the full checklist. High-level:
 
 1. ✅ Project scaffold & monorepo (Bun workspaces, Express, Vite, Tailwind)
-2. Auth — express-session, login/logout, protected routes, React auth context
+2. 🔄 Auth — Better Auth wired up (email/password, login/logout, protected routes); admin-only user management still pending (phase 9)
 3. Email ingestion — inbound webhook → Ticket record
 4. Ticket API — CRUD, filtering, sorting, Zod validation
 5. AI features — classification, summarization, suggested reply (Claude API)
@@ -90,11 +101,13 @@ Libraries to always check via Context7:
 - `Tailwind CSS` — v4 uses `@import "tailwindcss"`, no config file needed
 - `React Router` — v7 changed loader/action patterns
 - `Anthropic SDK` — messages API, tool use, streaming
+- `Better Auth` — adapter config, plugin API, session/cookie handling
 
 ## Key Decisions & Gotchas
 
 - **Bun workspaces** hoist packages to root `node_modules/.bun/` but symlink them into each workspace's `node_modules/` — IDE resolution works, `bun tsc` is the source of truth
 - **Tailwind v4** — no `tailwind.config.js`; configured via CSS and the `@tailwindcss/vite` plugin
 - **Express v5** — async route errors propagate automatically (no need to `next(err)` manually)
-- **Session auth** — cookie-based sessions stored in PostgreSQL via `connect-pg-simple`; no JWT
+- **Session auth** — Better Auth cookie-based sessions stored in PostgreSQL via `prismaAdapter`; no JWT, no `connect-pg-simple`
+- **No self-registration** — `disableSignUp: true` in `auth.ts`; new users only via `server/prisma/seed.ts`
 - Copy `.env.example` → `.env` in `server/` before running
