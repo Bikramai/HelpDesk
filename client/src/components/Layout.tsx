@@ -5,6 +5,7 @@ type LayoutProps = {
   user: {
     name: string
     email: string
+    role?: string
   }
 }
 

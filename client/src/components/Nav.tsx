@@ -1,10 +1,11 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { authClient } from '../lib/auth-client'
 
 type NavProps = {
   user: {
     name: string
     email: string
+    role?: string
   }
 }
 
@@ -25,6 +26,14 @@ export default function Nav({ user }: NavProps) {
         <span className="font-bold text-white">HelpDesk</span>
 
         <div className="flex items-center gap-4">
+          {user.role === 'admin' && (
+            <Link
+              to="/users"
+              className="text-sm font-medium text-gray-300 hover:text-white"
+            >
+              Users
+            </Link>
+          )}
           <span className="text-sm text-gray-300">{user.name}</span>
           <button
             onClick={handleSignOut}

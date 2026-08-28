@@ -63,6 +63,7 @@ Better Auth (`server/src/lib/auth.ts`), email/password only, `disableSignUp: tru
 - **Role field** — `user.role` is a Better Auth `additionalFields` entry (`admin | agent`), defaults to `agent`, not settable via client input (`input: false`).
 - **Client** — `client/src/lib/auth-client.ts` creates the Better Auth React client (`createAuthClient`) pointed at `window.location.origin`; use `authClient.useSession()` for session state and `authClient.signIn.email()` / `.signOut()` for actions.
 - **Protected routes** — `client/src/components/ProtectedRoute.tsx` reads `useSession()`, redirects to `/login` when there's no session, otherwise renders `Layout` with `user={session.user}`.
+- **Admin-only routes** — `client/src/components/AdminRoute.tsx` additionally gates on `session.user.role === 'admin'` (redirects to `/` otherwise). Nest it inside `ProtectedRoute` in `App.tsx`, e.g. the `/users` route.
 - **Env vars** (`server/.env.example`) — `BETTER_AUTH_SECRET` (min 32 chars), `BETTER_AUTH_URL`, `TRUSTED_ORIGIN` (must match the Vite dev origin, `http://localhost:5173`), plus `ADMIN_EMAIL` / `ADMIN_PASSWORD` consumed by the seed script.
 
 ## Implementation Phases
