@@ -19,6 +19,15 @@ AI-powered ticket management system. Support emails arrive via webhook, get auto
 | Email | SendGrid or Mailgun (inbound webhook + outbound replies) |
 | Deployment | Docker + cloud provider |
 
+## Project Structure
+
+```
+/client  - React frontend(Vite)
+/server  - Express backend
+/e2e     - Playwright E2E tests
+
+```
+
 ## Monorepo Structure
 
 ```
