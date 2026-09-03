@@ -75,6 +75,15 @@ Better Auth (`server/src/lib/auth.ts`), email/password only, `disableSignUp: tru
 - **Admin-only routes** — `client/src/components/AdminRoute.tsx` additionally gates on `session.user.role === 'admin'` (redirects to `/` otherwise). Nest it inside `ProtectedRoute` in `App.tsx`, e.g. the `/users` route.
 - **Env vars** (`server/.env.example`) — `BETTER_AUTH_SECRET` (min 32 chars), `BETTER_AUTH_URL`, `TRUSTED_ORIGIN` (must match the Vite dev origin, `http://localhost:5173`), plus `ADMIN_EMAIL` / `ADMIN_PASSWORD` consumed by the seed script.
 
+## Testing
+
+E2E tests live in `e2e/tests/*.spec.ts` (Playwright), fully isolated from the dev database.
+
+- **Config** — `e2e/playwright.config.ts` loads `server/.env.test` (overriding any dev `.env` values), boots both `server` and `client` dev servers via `webServer`, runs against `http://localhost:5173` with a single `chromium` project.
+- **DB isolation** — `e2e/global-setup.ts` refuses to run unless `DATABASE_URL` in `server/.env.test` points at a database ending in `_test` (e.g. `helpdesk_test`), creates it if missing, runs `prisma migrate deploy`, then runs `server/prisma/seed.ts` — all against the test DB only, never dev.
+- **Run** — `bun run test:e2e` from the repo root (or `bun run --cwd e2e test`); also `test:ui` / `test:headed`.
+- **Writing tests** — use the `e2e-test-writer` subagent (`.claude/agents/e2e-test-writer.md`) rather than writing specs by hand. It reads the actual route/component before writing locators, respects `ProtectedRoute`/`AdminRoute` redirects, and runs the suite before handing back. Invoke it proactively after adding or changing a page, route, or user-facing flow, or when asked for E2E coverage.
+
 ## Implementation Phases
 
 See `implementation-plan.md` for the full checklist. High-level:
