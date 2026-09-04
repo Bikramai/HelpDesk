@@ -43,4 +43,5 @@ export default async function globalSetup() {
   const env = { ...process.env }
   execSync('bunx prisma migrate deploy', { cwd: serverDir, stdio: 'inherit', env })
   execSync('bun prisma/seed.ts', { cwd: serverDir, stdio: 'inherit', env })
+  execSync('bun prisma/seed-e2e.ts', { cwd: serverDir, stdio: 'inherit', env })
 }
