@@ -5,6 +5,8 @@ import rateLimit from 'express-rate-limit'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './lib/auth'
 import { requireAuth } from './middleware/requireAuth'
+import { requireAdmin } from './middleware/requireAdmin'
+import prisma from './lib/prisma'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -36,6 +38,14 @@ if (process.env.NODE_ENV === 'production') {
 
 app.get('/api/me', requireAuth, (_req, res) => {
   res.json(res.locals.user)
+})
+
+app.get('/api/users', requireAuth, requireAdmin, async (_req, res) => {
+  const users = await prisma.user.findMany({
+    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    orderBy: { name: 'asc' },
+  })
+  res.json(users)
 })
 
 app.listen(PORT, () => {
