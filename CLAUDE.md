@@ -8,53 +8,25 @@ AI-powered ticket management system. Support emails arrive via webhook, get auto
 
 | Layer | Choice |
 |---|---|
-| Runtime | Bun |
-| Backend | Express 5 + TypeScript |
-| Frontend | React 19 + Vite 6 + TypeScript |
-| Styling | Tailwind CSS v4 |
-| Routing | React Router v7 |
-| Database | PostgreSQL + Prisma ORM |
-| Auth | Better Auth (email/password, database sessions via Prisma) |
 | AI | Anthropic Claude API |
 | Email | SendGrid or Mailgun (inbound webhook + outbound replies) |
 | Deployment | Docker + cloud provider |
 
-## Project Structure
-
-```
-/client  - React frontend(Vite)
-/server  - Express backend
-/e2e     - Playwright E2E tests
-
-```
-
-## Monorepo Structure
-
-```
-HelpDesk/
-├── CLAUDE.md
-├── package.json          # bun workspace root
-├── tsconfig.json         # shared TS base (extended by server + client)
-├── bunfig.toml           # backend = "symlink" for IDE package resolution
-├── server/               # Express API
-│   ├── src/index.ts      # entry point, Express app
-│   └── .env.example
-└── client/               # Vite + React SPA
-    ├── src/main.tsx      # entry — BrowserRouter wraps App
-    ├── src/App.tsx
-    ├── src/index.css     # @import "tailwindcss"
-    └── vite.config.ts    # proxies /api/* → localhost:3000
-```
+(Runtime/backend/frontend/styling/routing/database/auth choices are in `client/package.json` and `server/package.json`.)
 
 ## Dev Commands
 
-```bash
-bun dev               # start both server + client in parallel
-bun dev:server        # server only  (http://localhost:3000)
-bun dev:client        # client only  (http://localhost:5173)
-```
+`bun dev` / `dev:server` / `dev:client` — see root `package.json` scripts.
 
 Server hot-reloads via `bun --watch`. Vite handles client HMR. The Vite proxy forwards all `/api/*` requests to `:3000`, so no CORS issues in dev.
+
+## Frontend Data Fetching
+
+Use `axios` for HTTP calls and TanStack Query (`@tanstack/react-query`) for server state — don't reach for raw `fetch` or manual `useEffect`/`useState` data loading in new pages/components.
+
+- Shared `QueryClient` lives in `client/src/lib/query-client.ts`; `client/src/main.tsx` wraps the app in `QueryClientProvider`.
+- Pass `{ withCredentials: true }` on axios calls so the Better Auth session cookie is sent.
+- See `client/src/pages/UsersPage.tsx` for the reference pattern (`useQuery({ queryKey, queryFn })`).
 
 ## Domain Model (planned)
 
@@ -67,11 +39,7 @@ Server hot-reloads via `bun --watch`. Vite handles client HMR. The Vite proxy fo
 
 Better Auth (`server/src/lib/auth.ts`), email/password only, `disableSignUp: true` — accounts are created via the seed script (`server/prisma/seed.ts`), not self-registration. Sessions are stored in Postgres through `prismaAdapter`, not JWTs.
 
-- **Server mount** — `app.all('/api/auth/{*any}', toNodeHandler(auth))` in `server/src/index.ts` handles all Better Auth routes (sign-in, sign-out, session, etc.) under `/api/auth/*`.
-- **Protecting API routes** — `server/src/middleware/requireAuth.ts` calls `auth.api.getSession()`, 401s if absent, and sets `res.locals.user` / `res.locals.session` for downstream handlers.
 - **Role field** — `user.role` is a Better Auth `additionalFields` entry (`admin | agent`), defaults to `agent`, not settable via client input (`input: false`).
-- **Client** — `client/src/lib/auth-client.ts` creates the Better Auth React client (`createAuthClient`) pointed at `window.location.origin`; use `authClient.useSession()` for session state and `authClient.signIn.email()` / `.signOut()` for actions.
-- **Protected routes** — `client/src/components/ProtectedRoute.tsx` reads `useSession()`, redirects to `/login` when there's no session, otherwise renders `Layout` with `user={session.user}`.
 - **Admin-only routes** — `client/src/components/AdminRoute.tsx` additionally gates on `session.user.role === 'admin'` (redirects to `/` otherwise). Nest it inside `ProtectedRoute` in `App.tsx`, e.g. the `/users` route.
 - **Env vars** (`server/.env.example`) — `BETTER_AUTH_SECRET` (min 32 chars), `BETTER_AUTH_URL`, `TRUSTED_ORIGIN` (must match the Vite dev origin, `http://localhost:5173`), plus `ADMIN_EMAIL` / `ADMIN_PASSWORD` consumed by the seed script.
 
@@ -79,9 +47,7 @@ Better Auth (`server/src/lib/auth.ts`), email/password only, `disableSignUp: tru
 
 E2E tests live in `e2e/tests/*.spec.ts` (Playwright), fully isolated from the dev database.
 
-- **Config** — `e2e/playwright.config.ts` loads `server/.env.test` (overriding any dev `.env` values), boots both `server` and `client` dev servers via `webServer`, runs against `http://localhost:5173` with a single `chromium` project.
-- **DB isolation** — `e2e/global-setup.ts` refuses to run unless `DATABASE_URL` in `server/.env.test` points at a database ending in `_test` (e.g. `helpdesk_test`), creates it if missing, runs `prisma migrate deploy`, then runs `server/prisma/seed.ts` — all against the test DB only, never dev.
-- **Run** — `bun run test:e2e` from the repo root (or `bun run --cwd e2e test`); also `test:ui` / `test:headed`.
+- **Config & DB isolation** — see `.claude/agents/e2e-test-writer.md` for the Playwright config and test-DB isolation details.
 - **Writing tests** — use the `e2e-test-writer` subagent (`.claude/agents/e2e-test-writer.md`) rather than writing specs by hand. It reads the actual route/component before writing locators, respects `ProtectedRoute`/`AdminRoute` redirects, and runs the suite before handing back. Invoke it proactively after adding or changing a page, route, or user-facing flow, or when asked for E2E coverage.
 
 ## Implementation Phases
@@ -103,14 +69,6 @@ See `implementation-plan.md` for the full checklist. High-level:
 
 **Always use Context7 before writing code for any library.** This project uses several fast-moving libraries where your training data may be stale.
 
-```
-# Step 1 — resolve the library ID
-mcp__context7__resolve-library-id  libraryName="Express"
-
-# Step 2 — query docs
-mcp__context7__query-docs  libraryId="/expressjs/express"  query="your question"
-```
-
 Libraries to always check via Context7:
 - `Bun` — runtime APIs, workspace config, `bunfig.toml` options
 - `Express` — v5 changed several APIs (async error handling, path matching)
@@ -119,6 +77,7 @@ Libraries to always check via Context7:
 - `Vite` — config options, plugin API
 - `Tailwind CSS` — v4 uses `@import "tailwindcss"`, no config file needed
 - `React Router` — v7 changed loader/action patterns
+- `TanStack Query` — v5 changed several APIs (`isPending` vs `isLoading`, object-form `useQuery`)
 - `Anthropic SDK` — messages API, tool use, streaming
 - `Better Auth` — adapter config, plugin API, session/cookie handling
 
