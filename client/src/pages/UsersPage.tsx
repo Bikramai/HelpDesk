@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -9,6 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+const SKELETON_ROWS = 6
 
 type User = {
   id: string
@@ -40,7 +43,34 @@ export default function UsersPage() {
       {isError && <p className="text-sm text-destructive">Failed to load users.</p>}
 
       {!isError && isPending && (
-        <p className="text-sm text-muted-foreground">Loading users…</p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Joined</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <Skeleton className="h-4 w-32" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-48" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {users && users.length === 0 && (
