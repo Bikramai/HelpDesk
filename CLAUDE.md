@@ -50,6 +50,18 @@ E2E tests live in `e2e/tests/*.spec.ts` (Playwright), fully isolated from the de
 - **Config & DB isolation** — see `.claude/agents/e2e-test-writer.md` for the Playwright config and test-DB isolation details.
 - **Writing tests** — use the `e2e-test-writer` subagent (`.claude/agents/e2e-test-writer.md`) rather than writing specs by hand. It reads the actual route/component before writing locators, respects `ProtectedRoute`/`AdminRoute` redirects, and runs the suite before handing back. Invoke it proactively after adding or changing a page, route, or user-facing flow, or when asked for E2E coverage.
 
+### Component tests
+
+Client-side component tests use Vitest + React Testing Library, colocated with the component as `*.test.tsx` (e.g. `client/src/pages/UsersPage.test.tsx`).
+
+- **Run** — `bun run --cwd client test` (or root shortcut `bun run test:client`) runs once; `bun run --cwd client test:watch` for watch mode.
+- **Config** — `client/vite.config.ts` has the `test` block (`environment: 'happy-dom'`, `globals: true`, `setupFiles: ['./src/test/setup.ts']`). Environment is **happy-dom, not jsdom** — jsdom 30's bundled `undici` calls a `node:worker_threads` API Bun's runtime doesn't implement, which crashes the test worker on startup. Don't reintroduce jsdom.
+- **Setup file** — `client/src/test/setup.ts` imports `@testing-library/jest-dom/vitest` (the vitest-specific subpath — it augments Vitest's `Assertion` type; the default `@testing-library/jest-dom` entrypoint only augments Jest's types and `toBeInTheDocument()`-style matchers won't typecheck).
+- **Query rendering** — use the shared `renderWithQuery(ui, options?)` helper from `client/src/test/render-with-query.tsx` for any component that calls `useQuery`/`useMutation`. It wraps the component in a fresh `QueryClientProvider` per render with `retry: false` (avoids retry-related test timeouts and cross-test cache bleed). Don't hand-roll a local `QueryClientProvider` wrapper per test file.
+- **Mocking HTTP** — `vi.mock('axios')` at the top of the file, then `vi.mocked(axios.get)` (or `.post`/etc.) to set per-test resolved/rejected values. Reset mocks in `beforeEach`.
+- **Async assertions** — prefer `screen.findByText(...)` / `waitFor(...)` over `getByText` when waiting on a query to resolve; `useQuery`'s `isPending` is only true synchronously on the very first render.
+- Query by `data-slot`/`data-variant` attributes (shadcn components render these, e.g. `[data-slot="skeleton"]`, `[data-variant="secondary"]` on `Badge`) when there's no accessible text/role to target.
+
 ## Implementation Phases
 
 See `implementation-plan.md` for the full checklist. High-level:
@@ -78,6 +90,7 @@ Libraries to always check via Context7:
 - `Tailwind CSS` — v4 uses `@import "tailwindcss"`, no config file needed
 - `React Router` — v7 changed loader/action patterns
 - `TanStack Query` — v5 changed several APIs (`isPending` vs `isLoading`, object-form `useQuery`)
+- `Vitest` / `React Testing Library` — config shape, matcher/type entrypoints, environment options
 - `Anthropic SDK` — messages API, tool use, streaming
 - `Better Auth` — adapter config, plugin API, session/cookie handling
 
@@ -89,3 +102,4 @@ Libraries to always check via Context7:
 - **Session auth** — Better Auth cookie-based sessions stored in PostgreSQL via `prismaAdapter`; no JWT, no `connect-pg-simple`
 - **No self-registration** — `disableSignUp: true` in `auth.ts`; new users only via `server/prisma/seed.ts`
 - Copy `.env.example` → `.env` in `server/` before running
+- **Vitest DOM environment must be `happy-dom`, not `jsdom`** — see [Component tests](#component-tests) above
