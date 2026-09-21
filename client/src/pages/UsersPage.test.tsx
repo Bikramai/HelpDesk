@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import axios from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithQuery } from '@/test/render-with-query'
@@ -90,5 +91,50 @@ describe('UsersPage', () => {
     await waitFor(() =>
       expect(mockedGet).toHaveBeenCalledWith('/api/users', { withCredentials: true })
     )
+  })
+
+  describe('create-user dialog', () => {
+    it('shows the dialog when "New user" is clicked', async () => {
+      mockedGet.mockReturnValue(new Promise(() => {}))
+      const user = userEvent.setup()
+
+      renderWithQuery(<UsersPage />)
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'New user' }))
+
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByRole('heading', { name: 'Create user' })).toBeInTheDocument()
+    })
+
+    it('hides the dialog when clicking outside it', async () => {
+      mockedGet.mockReturnValue(new Promise(() => {}))
+      const user = userEvent.setup()
+
+      renderWithQuery(<UsersPage />)
+
+      await user.click(screen.getByRole('button', { name: 'New user' }))
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+
+      const overlay = document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement
+      await user.click(overlay)
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
+    it('hides the dialog when pressing Escape', async () => {
+      mockedGet.mockReturnValue(new Promise(() => {}))
+      const user = userEvent.setup()
+
+      renderWithQuery(<UsersPage />)
+
+      await user.click(screen.getByRole('button', { name: 'New user' }))
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+
+      await user.keyboard('{Escape}')
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
   })
 })
