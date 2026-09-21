@@ -35,8 +35,8 @@ Use **Zod** for all data validation — API request/response payloads, form inpu
 
 - **Version** — Zod v4 (`zod@^4`). Some v3 idioms moved to top-level: `z.email()`, `z.uuid()`, `z.url()` instead of `z.string().email()` etc. Check Context7 before writing schemas.
 - **Forms** — `react-hook-form` + `@hookform/resolvers/zod`: define the schema, pass `resolver: zodResolver(schema)`, and derive the form type with `z.infer<typeof schema>`. See `client/src/components/CreateUserDialog.tsx` and `client/src/pages/LoginPage.tsx` for the reference pattern.
-- **Server routes** — parse `req.body` / `req.query` with a schema at the top of each handler and return `400` with the flattened issues on failure. Express v5 propagates async throws automatically, so a thrown `ZodError` can also be handled centrally in an error middleware.
-- **Shared shapes** — when the same shape is needed on both sides (e.g. create-user payload), define it once and import it rather than duplicating the schema.
+- **Server routes** — parse `req.body` / `req.query` with a schema at the top of each handler and return `400` with the flattened issues on failure, via the top-level `z.flattenError(result.error)` (`res.status(400).json({ error: z.flattenError(result.error) })`) — **not** the instance method `result.error.flatten()`, which is deprecated in Zod v4. Express v5 propagates async throws automatically, so a thrown `ZodError` can also be handled centrally in an error middleware.
+- **Shared shapes live in `core`** — any schema needed on both sides (e.g. the create-user payload) is defined once in the `core` workspace package (`core/src/*.ts`, re-exported from `core/src/index.ts`) and imported as `from 'core'` — never duplicated between `client` and `server`. `core` has no build step; both Vite and Bun consume its `.ts` source directly via the workspace symlink (`"core": "workspace:*"` in each package's `package.json`). See `core/src/user.ts` (`createUserSchema`), consumed by `client/src/components/CreateUserDialog.tsx` (form validation via `zodResolver`) and `server/src/routes/users.ts` (`.safeParse(req.body)`), for the reference pattern. A schema used on only one side stays local to that workspace instead of moving to `core`.
 
 ## Domain Model (planned)
 
@@ -108,10 +108,11 @@ Libraries to always check via Context7:
 ## Key Decisions & Gotchas
 
 - **Bun workspaces** hoist packages to root `node_modules/.bun/` but symlink them into each workspace's `node_modules/` — IDE resolution works, `bun tsc` is the source of truth
+- **`core` workspace package** — holds Zod schemas shared between `client` and `server` (see [Shared shapes](#data-validation)). Depended on via `"core": "workspace:*"`; new shared schemas go in `core/src/`, re-exported from `core/src/index.ts`
 - **Tailwind v4** — no `tailwind.config.js`; configured via CSS and the `@tailwindcss/vite` plugin
 - **Express v5** — async route errors propagate automatically (no need to `next(err)` manually)
 - **Session auth** — Better Auth cookie-based sessions stored in PostgreSQL via `prismaAdapter`; no JWT, no `connect-pg-simple`
 - **No self-registration** — `disableSignUp: true` in `auth.ts`; new users only via `server/prisma/seed.ts`
 - Copy `.env.example` → `.env` in `server/` before running
-- **Zod v4, not v3** — `z.email()` is top-level; `z.string().email()` is deprecated
+- **Zod v4, not v3** — `z.email()` is top-level; `z.string().email()` is deprecated. Same for error formatting: use the top-level `z.flattenError(error)` / `z.treeifyError(error)`, not the deprecated `error.flatten()` / `error.format()` instance methods
 - **Vitest DOM environment must be `happy-dom`, not `jsdom`** — see [Component tests](#component-tests) above

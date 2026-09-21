@@ -2,7 +2,7 @@
   "name": "helpdesk",
   "version": "1.0.0",
   "private": true,
-  "workspaces": ["server", "client", "e2e"],
+  "workspaces": ["server", "client", "e2e", "core"],
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "dev:server": "bun run --cwd server dev",

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { createUserSchema, type CreateUserInput } from 'core'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
@@ -16,15 +16,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-const createUserSchema = z.object({
-  name: z.string().min(3, 'Name must be at least 3 characters'),
-  email: z.email('Enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-})
-
-type CreateUserFormValues = z.infer<typeof createUserSchema>
-
-async function createUser(values: CreateUserFormValues) {
+async function createUser(values: CreateUserInput) {
   await axios.post('/api/users', values, { withCredentials: true })
 }
 
@@ -38,7 +30,7 @@ export function CreateUserDialog() {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreateUserFormValues>({
+  } = useForm<CreateUserInput>({
     resolver: zodResolver(createUserSchema),
   })
 
@@ -51,15 +43,13 @@ export function CreateUserDialog() {
     },
   })
 
-  async function onSubmit(values: CreateUserFormValues) {
+  async function onSubmit(values: CreateUserInput) {
     setServerError(null)
     try {
       await mutateAsync(values)
     } catch (error) {
-      const message = axios.isAxiosError(error)
-        ? (error.response?.data?.error ?? 'Failed to create user')
-        : 'Failed to create user'
-      setServerError(message)
+      const serverMessage = axios.isAxiosError(error) ? error.response?.data?.error : undefined
+      setServerError(typeof serverMessage === 'string' ? serverMessage : 'Failed to create user')
     }
   }
 

@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
 import { hashPassword } from 'better-auth/crypto'
+import { z } from 'zod'
+import { createUserSchema } from 'core'
 import { requireAuth } from '../middleware/requireAuth'
 import { requireAdmin } from '../middleware/requireAdmin'
 import prisma from '../lib/prisma'
 import { Role } from '../generated/prisma/client'
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const router = Router()
 
@@ -19,20 +19,12 @@ router.get('/', requireAuth, requireAdmin, async (_req, res) => {
 })
 
 router.post('/', requireAuth, requireAdmin, async (req, res) => {
-  const { name, email, password } = req.body ?? {}
-
-  if (typeof name !== 'string' || name.trim().length < 3) {
-    res.status(400).json({ error: 'Name must be at least 3 characters' })
+  const parsed = createUserSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: z.flattenError(parsed.error) })
     return
   }
-  if (typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
-    res.status(400).json({ error: 'Enter a valid email address' })
-    return
-  }
-  if (typeof password !== 'string' || password.length < 8) {
-    res.status(400).json({ error: 'Password must be at least 8 characters' })
-    return
-  }
+  const { name, email, password } = parsed.data
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {
@@ -46,7 +38,7 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
   const user = await prisma.user.create({
     data: {
       id: userId,
-      name: name.trim(),
+      name,
       email,
       emailVerified: true,
       role: Role.agent,
