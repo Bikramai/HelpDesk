@@ -10,6 +10,7 @@ AI-powered ticket management system. Support emails arrive via webhook, get auto
 |---|---|
 | AI | Anthropic Claude API |
 | Email | SendGrid or Mailgun (inbound webhook + outbound replies) |
+| Validation | Zod (all payloads, forms, env) |
 | Deployment | Docker + cloud provider |
 
 (Runtime/backend/frontend/styling/routing/database/auth choices are in `client/package.json` and `server/package.json`.)
@@ -27,6 +28,15 @@ Use `axios` for HTTP calls and TanStack Query (`@tanstack/react-query`) for serv
 - Shared `QueryClient` lives in `client/src/lib/query-client.ts`; `client/src/main.tsx` wraps the app in `QueryClientProvider`.
 - Pass `{ withCredentials: true }` on axios calls so the Better Auth session cookie is sent.
 - See `client/src/pages/UsersPage.tsx` for the reference pattern (`useQuery({ queryKey, queryFn })`).
+
+## Data Validation
+
+Use **Zod** for all data validation — API request/response payloads, form input, webhook bodies, and env vars. Don't hand-roll `if (!body.email)` checks or use another validation library.
+
+- **Version** — Zod v4 (`zod@^4`). Some v3 idioms moved to top-level: `z.email()`, `z.uuid()`, `z.url()` instead of `z.string().email()` etc. Check Context7 before writing schemas.
+- **Forms** — `react-hook-form` + `@hookform/resolvers/zod`: define the schema, pass `resolver: zodResolver(schema)`, and derive the form type with `z.infer<typeof schema>`. See `client/src/components/CreateUserDialog.tsx` and `client/src/pages/LoginPage.tsx` for the reference pattern.
+- **Server routes** — parse `req.body` / `req.query` with a schema at the top of each handler and return `400` with the flattened issues on failure. Express v5 propagates async throws automatically, so a thrown `ZodError` can also be handled centrally in an error middleware.
+- **Shared shapes** — when the same shape is needed on both sides (e.g. create-user payload), define it once and import it rather than duplicating the schema.
 
 ## Domain Model (planned)
 
@@ -93,6 +103,7 @@ Libraries to always check via Context7:
 - `Vitest` / `React Testing Library` — config shape, matcher/type entrypoints, environment options
 - `Anthropic SDK` — messages API, tool use, streaming
 - `Better Auth` — adapter config, plugin API, session/cookie handling
+- `Zod` — v4 moved several APIs to top-level (`z.email()`, `z.uuid()`) and changed error formatting
 
 ## Key Decisions & Gotchas
 
@@ -102,4 +113,5 @@ Libraries to always check via Context7:
 - **Session auth** — Better Auth cookie-based sessions stored in PostgreSQL via `prismaAdapter`; no JWT, no `connect-pg-simple`
 - **No self-registration** — `disableSignUp: true` in `auth.ts`; new users only via `server/prisma/seed.ts`
 - Copy `.env.example` → `.env` in `server/` before running
+- **Zod v4, not v3** — `z.email()` is top-level; `z.string().email()` is deprecated
 - **Vitest DOM environment must be `happy-dom`, not `jsdom`** — see [Component tests](#component-tests) above
